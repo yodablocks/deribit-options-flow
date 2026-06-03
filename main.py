@@ -13,7 +13,9 @@ from signal import signals_from_snapshot
 def main():
     parser = argparse.ArgumentParser(description="Deribit options flow signals")
     parser.add_argument("--currency", default="BTC", choices=["BTC", "ETH"])
-    parser.add_argument("--output", default="print", choices=["print", "json"])
+    parser.add_argument("--output",   default="print", choices=["print", "json"])
+    parser.add_argument("--heatmap",  default=None,
+                        help="Render OI heatmap and save to file (e.g. oi.png)")
     args = parser.parse_args()
 
     print(f"\n=== Deribit Options Flow | {args.currency} ===\n")
@@ -29,9 +31,9 @@ def main():
     print(f"[3/3] Building signals...\n")
     snapshot = build_signals(summaries, spot)
 
-    pc  = snapshot['pc_ratio_oi']
-    skew = snapshot['iv_skew']
-    net  = snapshot['net_premium']
+    pc   = snapshot["pc_ratio_oi"]
+    skew = snapshot["iv_skew"]
+    net  = snapshot["net_premium"]
 
     print(f"  Put/Call Ratio (OI)  : {pc:.3f}  "
           f"{'⬆ bearish' if pc > 1.2 else '⬇ bullish' if pc < 0.8 else '→ neutral'}")
@@ -57,6 +59,17 @@ def main():
 
     if args.output == "json":
         print(json.dumps([dataclasses.asdict(e) for e in events], indent=2))
+
+    if args.heatmap:
+        print(f"\n[viz]  Rendering OI heatmap...")
+        from visualizer import plot_oi_heatmap
+        plot_oi_heatmap(
+            summaries=summaries,
+            spot_price=spot,
+            max_pain=snapshot["max_pain"],
+            currency=args.currency,
+            output=args.heatmap,
+        )
 
 
 if __name__ == "__main__":

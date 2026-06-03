@@ -4,76 +4,51 @@ Deribit BTC/ETH options flow signals — no API key required.
 
 Tracks where sophisticated money is positioned in options markets, which leads perp liquidation cascades on Hyperliquid by 1-4 hours. Feeds into `signal-pipeline` as a tier-2 indexed source.
 
-## Live output example
+## OI Heatmap — Strike × Expiry
+
+![BTC Options OI Heatmap](screenshot.png)
+> *June 3, 2026 snapshot · BTC spot $65,915 · 986 instruments · 202K BTC total OI*
+
+Green = call OI dominant · Red = put OI dominant · Intensity = magnitude
+Dashed gold = spot price · Dotted orange = max pain
+
+## Example interpretation (June 3, 2026)
+
+Running the tool on June 3 2026 with BTC at $65,915 produced:
 
 ```
-=== Deribit Options Flow | BTC ===
+Put/Call Ratio (OI)  : 0.619   → bullish (calls dominant)
+IV Skew (25d proxy)  : +19.07% → fear premium in puts
+Net Premium Flow     : -$7.5M  → recent flow into puts
+ATM IV               : 45.7%
+Max Pain             : $75,000 → +13.9% above spot
+Dominant expiry      : 26JUN26 → IV spike to 70.1% vs ~42% for others
 
-  Put/Call Ratio (OI)  : 0.619  ⬇ bullish
-  IV Skew (25d proxy)  : +19.07%  (fear)
-  Net Premium Flow     : $-7,522,676  (puts dominant ↓)
-  ATM IV               : 45.7%
-  Max Pain             : $75,000  (spot diff: +13.9%)
-
-  Gamma Walls (top 3 OI within 15% of spot):
-    $60,000  OI=18,048 BTC  (-8.9% from spot)
-    $70,000  OI=15,284 BTC  (+6.3% from spot)
-    $75,000  OI=14,810 BTC  (+13.9% from spot)
-
-  Term Structure (avg IV by expiry):
-       12JUN26  IV=51.4%  (58 strikes)
-       19JUN26  IV=45.3%  (46 strikes)
-       26JUN26  IV=70.1%  (118 strikes)  ← event premium
-       31JUL26  IV=42.7%  (104 strikes)
-       28AUG26  IV=41.1%  (86 strikes)
-       25SEP26  IV=48.0%  (116 strikes)
-       25DEC26  IV=46.3%  (114 strikes)
-       26MAR27  IV=44.5%  (92 strikes)
+Gamma Walls:
+  $60,000  OI=18,048 BTC  (-8.9% from spot)  ← support floor
+  $70,000  OI=15,284 BTC  (+6.3% from spot)  ← resistance
+  $75,000  OI=14,810 BTC  (+13.9% from spot) ← max pain coincides
 ```
 
-## How to read the signals
+**Reading:** existing positioning is long-biased (P/C 0.619) with max pain
+gravitational pull toward $75K by June 26. The 26JUN26 IV spike to 70.1%
+signals the market is pricing a catalyst around that date.
 
-**Put/Call Ratio (OI-weighted)**
-Ratio of total put OI to total call OI across all strikes and expiries.
-- `< 0.8` — calls dominate, market is bullish positioned
-- `> 1.2` — puts dominate, market is hedged/bearish
-- The example (0.619) shows existing positioning is long-biased
+However, recent put flow (-$7.5M) and +19% IV skew reveal late-cycle hedging —
+long but nervous. The divergence between OI positioning (bullish) and daily
+premium flow (bearish) is the most actionable signal: the crowd is long and
+starting to hedge.
 
-**IV Skew**
-25-delta proxy: put IV at 90% of spot minus call IV at 110% of spot.
-Positive = puts more expensive = fear premium in the tail.
-- The example (+19%) means even though positioning is bullish,
-  the market is paying a significant premium to hedge downside.
-  Classic late-cycle pattern: long but nervous.
+Key levels from the heatmap:
+- **$60K** — major put wall, accelerates downside if broken
+- **$70K** — first gamma wall, dealer buying on the way up
+- **$75K** — max pain magnet, June 26 expiry target
 
-**Net Premium Flow**
-Call volume (USD) minus put volume (USD) for the day.
-Reflects where actual money moved today, not existing positioning.
-- The example (-$7.5M) means today's flow went into puts —
-  contradicting the bullish OI ratio. Recent hedging despite long bias.
-  This P/C OI vs net premium divergence is the most actionable signal.
+This is the structured signal an AI trading agent consumes alongside
+[hl-liquidation-heatmap](https://github.com/yodablocks/hl-liquidation-heatmap)
+to assess both direction and cascade risk at specific price levels.
 
-**Max Pain**
-Strike where the total payout to option holders is minimized.
-Market makers are naturally hedged here — acts as a gravitational pull
-toward expiry. The example ($75,000, +13.9% above spot) suggests
-upside pressure into the next expiry.
-
-**Gamma Walls**
-Strikes with the highest open interest near spot (within 15%).
-Dealers delta-hedge heavily at these levels, creating natural
-support/resistance. The example shows:
-- `$60,000` — strong support floor (-8.9%)
-- `$70,000` — resistance level (+6.3%)
-- `$75,000` — max pain coincides with gamma wall (strong magnet)
-
-**Term Structure**
-Average IV per expiry. Normal = upward sloping (more uncertainty further out).
-Spikes at specific expiries signal event risk being priced in.
-The 26JUN26 spike to 70.1% (vs 45% for adjacent expiries) indicates
-the market is pricing a specific catalyst around that date.
-
-## Why this leads HL liquidations
+## Why options flow leads HL liquidations
 
 ```
 Deribit large put buying
@@ -87,7 +62,17 @@ Deribit large put buying
 Options positioning leads perp liquidations by 1-4 hours.
 Combined with `hl-liquidation-heatmap` you get:
 - **Direction + timing** — from options flow
-- **Price targets** — from liquidation cluster map
+- **Price targets + cascade levels** — from liquidation cluster map
+
+## Signals
+
+| Signal | Description | Interpretation |
+|--------|-------------|----------------|
+| `put_call_ratio` | OI-weighted P/C ratio | >1.2 bearish, <0.8 bullish |
+| `iv_skew` | 25-delta put IV minus call IV | Positive = fear premium |
+| `net_premium_flow` | Call USD volume minus put USD volume | Positive = calls dominant |
+| `max_pain` | Strike minimizing option holder payout | Gravitational level into expiry |
+| `gamma_wall` | High-OI strikes near spot | Dealer hedge = support/resistance |
 
 ## Setup
 
@@ -100,11 +85,14 @@ No API key required — Deribit public endpoints only.
 ## Usage
 
 ```bash
-# Snapshot with full signal output
+# Signal snapshot
 python main.py --currency BTC
 
+# With OI heatmap
+python main.py --currency BTC --heatmap oi_heatmap.png && open oi_heatmap.png
+
 # ETH options
-python main.py --currency ETH
+python main.py --currency ETH --heatmap eth_oi.png
 
 # JSON output for signal-pipeline ingestion
 python main.py --currency BTC --output json
@@ -128,16 +116,16 @@ events   = signals_from_snapshot(snapshot, "BTC")
 
 ```
 deribit-options-flow/
-├── fetcher.py    # Deribit public REST API
-├── processor.py  # P/C ratio, IV skew, max pain, gamma walls, term structure
-├── signal.py     # SignalEvent output for signal-pipeline
-├── main.py       # CLI entrypoint
+├── fetcher.py      # Deribit public REST API
+├── processor.py    # P/C ratio, IV skew, max pain, gamma walls, term structure
+├── signal.py       # SignalEvent output for signal-pipeline
+├── visualizer.py   # OI heatmap: strike × expiry
+├── main.py         # CLI entrypoint
 └── requirements.txt
 ```
 
 ## Roadmap
 
 - [ ] WebSocket streaming for live IV updates
-- [ ] OI heatmap by strike (visual, like hl-liquidation-heatmap)
 - [ ] Cross-signal: options flow × HL liquidation level correlation
-- [ ] ETH options flow (same pipeline, different currency)
+- [ ] ETH options flow validation
