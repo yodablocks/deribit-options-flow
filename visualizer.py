@@ -19,7 +19,7 @@ import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
 import matplotlib.ticker as mticker
 from collections import defaultdict
-from processor import parse_instrument
+from deribit_options_flow.processor import parse_instrument
 
 
 BG_COLOR     = "#0D0D0F"

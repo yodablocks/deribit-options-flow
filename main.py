@@ -5,9 +5,9 @@ deribit-options-flow — CLI entrypoint
 import argparse
 import json
 import dataclasses
-from fetcher import fetch_options_summary, fetch_index_price
-from processor import build_signals
-from signal import signals_from_snapshot
+from deribit_options_flow.fetcher import fetch_options_summary, fetch_index_price
+from deribit_options_flow.processor import build_signals
+from deribit_options_flow.signal import signals_from_snapshot
 
 
 def main():

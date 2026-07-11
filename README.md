@@ -101,9 +101,9 @@ python main.py --currency BTC --output json
 ## signal-pipeline integration
 
 ```python
-from fetcher import fetch_options_summary, fetch_index_price
-from processor import build_signals
-from signal import signals_from_snapshot
+from deribit_options_flow.fetcher import fetch_options_summary, fetch_index_price
+from deribit_options_flow.processor import build_signals
+from deribit_options_flow.signal import signals_from_snapshot
 
 spot     = fetch_index_price("BTC")
 summary  = fetch_options_summary("BTC")
@@ -116,13 +116,18 @@ events   = signals_from_snapshot(snapshot, "BTC")
 
 ```
 deribit-options-flow/
-├── fetcher.py      # Deribit public REST API
-├── processor.py    # P/C ratio, IV skew, max pain, gamma walls, term structure
-├── signal.py       # SignalEvent output for signal-pipeline
-├── visualizer.py   # OI heatmap: strike × expiry
-├── main.py         # CLI entrypoint
+├── deribit_options_flow/
+│   ├── fetcher.py    # Deribit public REST API
+│   ├── processor.py  # P/C ratio, IV skew, max pain, gamma walls, term structure
+│   └── signal.py     # SignalEvent output for signal-pipeline
+├── visualizer.py     # OI heatmap: strike × expiry
+├── main.py           # CLI entrypoint
 └── requirements.txt
 ```
+
+> Modules are namespaced under `deribit_options_flow/` rather than exposed as bare
+> top-level modules — a bare `fetcher`/`signal` collides with any other installed
+> package using the same name (`signal` also shadows Python's stdlib `signal` module).
 
 ## Roadmap
 
